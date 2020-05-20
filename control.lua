@@ -966,7 +966,7 @@ local function building_tick(event)
                     abort = true
                     train_config.builder_loco.surface.create_entity({
                       name = "flying-text",
-                      text = {"train-scaling.error-equipment-missing"},
+                      text = {"train-scaling.error-equipment-missing", game.item_prototypes[equipment_table.item_name].localised_name},
                       position = train_config.builder_loco.position,
                       color = {r = 1, g = 0.45, b = 0, a = 0.8},
                       force = train_config.builder_loco.force,
@@ -1222,6 +1222,7 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
 
     -- start scanning stations that might build for one that is ready to
     local fail_reasons = {}
+	local fail_reasons_args = {}
     local built_count = 0
     for station_entity_id, station_entity in pairs(scaling_config.entities) do
       if not station_entity.valid then
@@ -1230,6 +1231,7 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
         local build_config = util.table.deepcopy(train_config)
         local fail = false
         local fail_reason
+		local fail_reason_arg = nil
         -- check inventory for parts
         -- get the input chest if there is one
         local x_chest, y_chest = rotate_relative_position[station_entity.direction](1.5, 0.5)
@@ -1302,6 +1304,7 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
                 else
                   fail = true
                   fail_reason = "train-scaling.error-equipment-missing"
+				  fail_reason_arg = game.item_prototypes[grid.item_name].localised_name
                   break
                 end
               end
@@ -1488,15 +1491,23 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
           end
         end
         fail_reasons[station_entity.unit_number] = fail_reason
+		fail_reasons_args[station_entity.unit_number] = fail_reason_arg
       end
     end
     -- didn't get all of our builds completed, create some floating text entities
     for station_entity_id, station_entity in pairs(scaling_config.entities) do
       if fail_reasons[station_entity_id] then
         if not global.errors[station_entity_id] then
+		  local text_arg = fail_reasons_args[station_entity_id]
+		  local fail_text
+		  if text_arg == nil then
+			fail_text = {fail_reasons[station_entity_id]}
+		  else
+		    fail_text = {fail_reasons[station_entity_id], text_arg}
+		  end
           surface.create_entity({
             name = "flying-text",
-            text = {fail_reasons[station_entity_id]},
+            text = fail_text,
             position = station_entity.position,
             color = {r = 1, g = 0.45, b = 0, a = 0.8},
             force = station_entity.force,
